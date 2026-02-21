@@ -498,9 +498,9 @@ Respond ONLY in JSON:
                 background: goal === o.id ? "#f59e0b10" : "#0c0c0c", fontFamily: "'IBM Plex Mono'",
                 transition: "all 0.2s",
               }}>
-                <div style={{ fontSize: 16 }}>{o.icon}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: goal === o.id ? "#f59e0b" : "#666", marginTop: 2, textTransform: "capitalize" }}>{o.id}</div>
-                <div style={{ fontSize: 8, color: "#888", marginTop: 1 }}>{o.sub}</div>
+                <div style={{ fontSize: 18, color: goal === o.id ? "#f59e0b" : "#999" }}>{o.icon}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: goal === o.id ? "#f59e0b" : "#999", marginTop: 2, textTransform: "capitalize" }}>{o.id}</div>
+                <div style={{ fontSize: 8, color: goal === o.id ? "#c88a0a" : "#777", marginTop: 1 }}>{o.sub}</div>
               </button>
             ))}
           </div>
