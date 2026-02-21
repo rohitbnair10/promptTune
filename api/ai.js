@@ -3,39 +3,51 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    return res.status(500).json({ error: 'OPENAI_API_KEY not configured. Add it in Vercel Settings > Environment Variables.' });
   }
 
   try {
-    const { model, max_tokens, system, messages } = req.body;
+    const { max_tokens, system, messages } = req.body;
 
-    const body = {
-      model: model || 'claude-sonnet-4-20250514',
-      max_tokens: max_tokens || 1000,
-      messages: messages || [],
-    };
-    if (system) body.system = system;
+    const msgs = [];
+    if (system) msgs.push({ role: 'system', content: system });
+    if (messages && messages.length > 0) {
+      for (const m of messages) {
+        msgs.push({ role: m.role, content: m.content });
+      }
+    }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': 'Bearer ' + apiKey,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        max_tokens: max_tokens || 1000,
+        messages: msgs,
+      }),
     });
 
-    const data = await response.json();
+    const raw = await response.text();
 
     if (!response.ok) {
-      return res.status(response.status).json(data);
+      return res.status(response.status).json({ error: raw });
     }
 
-    return res.status(200).json(data);
+    const data = JSON.parse(raw);
+
+    return res.status(200).json({
+      content: [{ type: 'text', text: data.choices[0].message.content }],
+      usage: {
+        input_tokens: data.usage.prompt_tokens,
+        output_tokens: data.usage.completion_tokens,
+      },
+    });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
