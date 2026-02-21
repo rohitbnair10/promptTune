@@ -167,6 +167,7 @@ export default function App() {
   const [userInput, setUserInput] = useState("");
   const [criteria, setCriteria] = useState("");
   const [goal, setGoal] = useState("accuracy");
+  const [guardrails, setGuardrails] = useState({ accuracy: "none", cost: "none", latency: "none" });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -193,6 +194,16 @@ export default function App() {
       cost: "Minimize total tokens. Make the system prompt shorter. Instruct the AI to respond concisely.",
       latency: "Minimize response time. Add strict length limits. Prioritize speed.",
     };
+    const guardrailMap = {
+      none: "",
+      similar: "keep it roughly similar to the original (within ~20% change)",
+      strict: "minimize it as much as possible without sacrificing the primary goal",
+    };
+    const guardrailLabels = { accuracy: "accuracy/quality", cost: "token count and cost", latency: "response time" };
+    const guardrailInstructions = Object.entries(guardrails)
+      .filter(([k, v]) => k !== goal && v !== "none")
+      .map(([k, v]) => `GUARDRAIL for ${guardrailLabels[k]}: ${guardrailMap[v]}.`)
+      .join("\n");
     try {
       setStep("Testing current prompt...");
       const origTest = await callAI(userInput, sysPrompt);
@@ -208,8 +219,10 @@ ${userInput}
 SUCCESS CRITERIA:
 ${criteria}
 
-OPTIMIZATION GOAL: ${goal.toUpperCase()}
+PRIMARY OPTIMIZATION GOAL: ${goal.toUpperCase()}
 ${goalMap[goal]}
+
+${guardrailInstructions ? "SECONDARY CONSTRAINTS:\n" + guardrailInstructions : "No secondary constraints."}
 
 Evaluate CURRENT accuracy 1-10 and estimate IMPROVED accuracy.
 
@@ -226,9 +239,7 @@ Respond ONLY in JSON:
       const cleaned = raw.replace(/```json\n?|```/g, "").trim();
       var fixed = cleaned;
       try { JSON.parse(fixed); } catch(e) {
-        // Fix unescaped newlines inside JSON strings
         fixed = fixed.replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t");
-        // Restore structural newlines after colons, commas, braces
         fixed = fixed.replace(/\\n(\s*["\]},{[])/g, "\n$1");
       }
       let parsed;
@@ -505,6 +516,53 @@ Respond ONLY in JSON:
             ))}
           </div>
 
+          {/* ── Guardrails ── */}
+          {(() => {
+            const others = ["accuracy", "cost", "latency"].filter(x => x !== goal);
+            const labels = { accuracy: { icon: "◎", name: "Quality" }, cost: { icon: "💰", name: "Cost" }, latency: { icon: "⚡", name: "Speed" } };
+            const options = [
+              { id: "none", label: "No limit", desc: "Ignore this metric" },
+              { id: "similar", label: "Keep similar", desc: "Within ~20%" },
+              { id: "strict", label: "Strict", desc: "Minimize" },
+            ];
+            return (
+              <div style={{
+                marginTop: 12, padding: "14px 16px", background: "#0a0a0a", border: "1px solid #1a1a1a",
+                borderRadius: 10, transition: "all 0.3s ease",
+              }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#777", letterSpacing: 1, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ color: "#f59e0b" }}>⚙</span> GUARDRAILS
+                  <span style={{ fontWeight: 400, color: "#555", letterSpacing: 0 }}>— optional constraints on other metrics</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {others.map(metric => (
+                    <div key={metric}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#999", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>{labels[metric].icon}</span> {labels[metric].name}
+                      </div>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        {options.map(opt => (
+                          <button key={opt.id} onClick={() => setGuardrails(g => ({ ...g, [metric]: opt.id }))}
+                            title={opt.desc}
+                            style={{
+                              flex: 1, padding: "6px 4px", borderRadius: 6, cursor: "pointer", textAlign: "center",
+                              fontSize: 9, fontWeight: 600, fontFamily: "'IBM Plex Mono'",
+                              border: guardrails[metric] === opt.id ? "1px solid #f59e0b50" : "1px solid #1a1a1a",
+                              background: guardrails[metric] === opt.id ? "#f59e0b10" : "#080808",
+                              color: guardrails[metric] === opt.id ? "#f59e0b" : "#666",
+                              transition: "all 0.15s",
+                            }}>
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           <button onClick={run} disabled={(!ready || loading) && canRun} style={{
             width: "100%", marginTop: 18, padding: 14, borderRadius: 10, border: "none",
             background: !canRun ? "#ef4444" : ready && !loading ? "#f59e0b" : "#151515",
@@ -521,14 +579,29 @@ Respond ONLY in JSON:
                 const m = result.metrics, aO = result.current_accuracy || 5, aN = result.expected_accuracy || 7, aD = aN - aO;
                 const lD = m.opt.latency - m.orig.latency, lP = m.orig.latency ? Math.round((lD / m.orig.latency) * 100) : 0;
                 const cD = m.opt.cost - m.orig.cost, cP = m.orig.cost ? Math.round((cD / m.orig.cost) * 100) : 0;
+
+                // Check guardrail violations
+                const checkGuardrail = (metric, pctChange) => {
+                  const g = guardrails[metric];
+                  if (g === "none" || metric === goal) return null;
+                  if (g === "similar" && pctChange > 25) return "⚠ Exceeded ~20% guardrail";
+                  if (g === "strict" && pctChange > 5) return "⚠ Not minimized";
+                  return "✓ Within guardrail";
+                };
+
+                const gAccuracy = checkGuardrail("accuracy", aD < 0 ? (aD / Math.max(aO, 1)) * 100 : 0);
+                const gCost = checkGuardrail("cost", cP);
+                const gLatency = checkGuardrail("latency", lP);
+
                 return (
                   <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                     {[
-                      { l: "Accuracy", o: `${aO}/10`, n: `${aN}/10`, d: `${aD > 0 ? "+" : ""}${aD}`, g: aD > 0, b: aD < 0, dt: aD > 0 ? "Better match" : "Same" },
-                      { l: "Cost", o: `$${m.orig.cost.toFixed(4)}`, n: `$${m.opt.cost.toFixed(4)}`, d: `${cP > 0 ? "+" : ""}${cP}%`, g: cD < 0, b: cD > 0, dt: `${m.orig.totalTokens}→${m.opt.totalTokens} tok` },
-                      { l: "Latency", o: `${(m.orig.latency / 1000).toFixed(1)}s`, n: `${(m.opt.latency / 1000).toFixed(1)}s`, d: `${lP > 0 ? "+" : ""}${lP}%`, g: lD < 0, b: lD > 0, dt: `${m.orig.latency}→${m.opt.latency}ms` },
+                      { l: "Accuracy", o: `${aO}/10`, n: `${aN}/10`, d: `${aD > 0 ? "+" : ""}${aD}`, g: aD > 0, b: aD < 0, dt: aD > 0 ? "Better match" : "Same", guardrail: gAccuracy, isPrimary: goal === "accuracy" },
+                      { l: "Cost", o: `$${m.orig.cost.toFixed(4)}`, n: `$${m.opt.cost.toFixed(4)}`, d: `${cP > 0 ? "+" : ""}${cP}%`, g: cD < 0, b: cD > 0, dt: `${m.orig.totalTokens}→${m.opt.totalTokens} tok`, guardrail: gCost, isPrimary: goal === "cost" },
+                      { l: "Latency", o: `${(m.orig.latency / 1000).toFixed(1)}s`, n: `${(m.opt.latency / 1000).toFixed(1)}s`, d: `${lP > 0 ? "+" : ""}${lP}%`, g: lD < 0, b: lD > 0, dt: `${m.orig.latency}→${m.opt.latency}ms`, guardrail: gLatency, isPrimary: goal === "latency" },
                     ].map((x, i) => (
-                      <div key={i} style={{ flex: 1, background: "#0a0a0a", border: `1px solid ${x.g ? "#10b98128" : x.b ? "#ef444428" : "#151515"}`, borderRadius: 10, padding: 12, textAlign: "center" }}>
+                      <div key={i} style={{ flex: 1, background: "#0a0a0a", border: `1px solid ${x.isPrimary ? "#f59e0b20" : x.g ? "#10b98128" : x.b ? "#ef444428" : "#151515"}`, borderRadius: 10, padding: 12, textAlign: "center", position: "relative" }}>
+                        {x.isPrimary && <div style={{ position: "absolute", top: 6, right: 8, fontSize: 7, fontWeight: 700, color: "#f59e0b", background: "#f59e0b15", padding: "1px 5px", borderRadius: 3, textTransform: "uppercase", letterSpacing: 0.5 }}>Primary</div>}
                         <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>{x.l}</div>
                         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginBottom: 4 }}>
                           <span style={{ fontSize: 12, color: "#888" }}>{x.o}</span><span style={{ color: "#666" }}>→</span>
@@ -536,6 +609,11 @@ Respond ONLY in JSON:
                         </div>
                         <div style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, fontSize: 10, fontWeight: 700, background: x.g ? "#10b98115" : x.b ? "#ef444415" : "#151515", color: x.g ? "#10b981" : x.b ? "#ef4444" : "#555" }}>{x.d}{x.g ? " ✓" : x.b ? " ✗" : ""}</div>
                         <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>{x.dt}</div>
+                        {x.guardrail && (
+                          <div style={{ marginTop: 5, fontSize: 8, fontWeight: 600, color: x.guardrail.startsWith("✓") ? "#10b981" : "#f59e0b", background: x.guardrail.startsWith("✓") ? "#10b98110" : "#f59e0b10", padding: "2px 6px", borderRadius: 3, display: "inline-block" }}>
+                            {x.guardrail}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
