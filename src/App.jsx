@@ -9,7 +9,7 @@ const getSavedProvider = () => { try { return localStorage.getItem("ek_provider"
 const saveProvider = (p) => { try { localStorage.setItem("ek_provider", p); } catch(e) {} };
 
 async function callAI(prompt, system) {
-  const body = { model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] };
+  const body = { model: "gpt-4o-mini", max_tokens: 1000, messages: [{ role: "user", content: prompt }] };
   if (system) body.system = system;
   const t0 = performance.now();
   const res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
