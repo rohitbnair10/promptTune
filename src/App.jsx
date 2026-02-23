@@ -298,6 +298,22 @@ Respond ONLY in JSON:
         .stagger>*:nth-child(1){animation-delay:0s}.stagger>*:nth-child(2){animation-delay:0.1s}
         .stagger>*:nth-child(3){animation-delay:0.2s}.stagger>*:nth-child(4){animation-delay:0.3s}
         .stagger>*:nth-child(5){animation-delay:0.4s}.stagger>*:nth-child(6){animation-delay:0.5s}
+        @media(max-width:640px){
+          .hero-grid{grid-template-columns:1fr!important;padding:20px 16px!important}
+          .hero-demo{display:none!important}
+          .hero-heading{font-size:36px!important;letter-spacing:-0.5px!important}
+          .stats-row{flex-wrap:wrap!important;gap:24px!important;justify-content:center!important}
+          .value-grid{grid-template-columns:1fr!important}
+          .steps-grid{grid-template-columns:1fr!important}
+          .key-modal{width:calc(100vw - 32px)!important;max-width:420px}
+          .budget-grid{grid-template-columns:1fr!important}
+          .guardrails-grid{grid-template-columns:1fr!important}
+          .metrics-row{flex-direction:column!important}
+          .output-grid{grid-template-columns:1fr!important}
+          .budget-label-row{flex-wrap:wrap!important;gap:4px!important}
+          .guardrail-label-row{flex-wrap:wrap!important;gap:4px!important}
+          .tool-header{flex-wrap:wrap!important;gap:8px!important}
+        }
       `}</style>
 
       {/* ════════════ HERO ════════════ */}
@@ -314,10 +330,10 @@ Respond ONLY in JSON:
           </div>
         </div>
 
-        <div style={{ position: "relative", zIndex: 2, width: "100%", maxWidth: 1100, margin: "auto", padding: "20px 28px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center" }}>
+        <div className="hero-grid" style={{ position: "relative", zIndex: 2, width: "100%", maxWidth: 1100, margin: "auto", padding: "20px 28px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center" }}>
           {/* Left */}
           <div className="stagger">
-            <h1 style={{ fontSize: 60, fontWeight: 400, color: "#f5f5f0", fontFamily: "'Instrument Serif', serif", lineHeight: 1.1, letterSpacing: "-1px", marginBottom: 20 }}>
+            <h1 className="hero-heading" style={{ fontSize: 60, fontWeight: 400, color: "#f5f5f0", fontFamily: "'Instrument Serif', serif", lineHeight: 1.1, letterSpacing: "-1px", marginBottom: 20 }}>
               <Typewriter text="Your prompts are costing you more than you think." speed={35} />
             </h1>
 
@@ -347,7 +363,7 @@ Respond ONLY in JSON:
           </div>
 
           {/* Right — Demo */}
-          <div style={{ display: "flex", justifyContent: "center" }}>
+          <div className="hero-demo" style={{ display: "flex", justifyContent: "center" }}>
             <PromptDemo />
           </div>
         </div>
@@ -355,7 +371,7 @@ Respond ONLY in JSON:
 
       {/* ════════════ STATS BAR ════════════ */}
       <section ref={r1} style={{ borderTop: "1px solid #111", borderBottom: "1px solid #111", padding: "24px 24px", ...reveal(v1) }}>
-        <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", justifyContent: "space-around", textAlign: "center" }}>
+        <div className="stats-row" style={{ maxWidth: 800, margin: "0 auto", display: "flex", justifyContent: "space-around", textAlign: "center" }}>
           {[
             { val: <Counter end={87} suffix="%" />, label: "avg accuracy improvement" },
             { val: <Counter end={34} suffix="%" />, label: "avg cost reduction" },
@@ -379,7 +395,7 @@ Respond ONLY in JSON:
             <p style={{ fontSize: 12, color: "#888", marginTop: 8 }}>Most teams ship prompts based on vibes. Here's what you're missing.</p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          <div className="value-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {[
               { icon: "◎", title: "Blind spots in your prompt", desc: "Missing output constraints, vague instructions, no guardrails — PromptTune catches what you can't see by testing against your own criteria.", color: "#f59e0b", delay: 0 },
               { icon: "$", title: "Token waste", desc: "Verbose prompts = expensive responses. PromptTune measures exact token counts and shows you where to cut without losing quality.", color: "#10b981", delay: 0.1 },
@@ -409,7 +425,7 @@ Respond ONLY in JSON:
             <h2 style={{ fontSize: 45, fontFamily: "'Instrument Serif', serif", color: "#f5f5f0", fontWeight: 400, lineHeight: 1.15 }}>Three steps. Real numbers.</h2>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          <div className="steps-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
             {[
               { n: "01", title: "Paste your prompt", desc: "System prompt + sample user input + what good looks like.", icon: "📋" },
               { n: "02", title: "Pick your priority", desc: "Accuracy, cost, or speed — PromptTune optimizes for what matters.", icon: "🎯" },
@@ -468,7 +484,7 @@ Respond ONLY in JSON:
       <section ref={toolRef} id="tool" style={{ padding: "40px 24px 80px", borderTop: "1px solid #f59e0b10" }}>
         {showKeyModal && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowKeyModal(false)}>
-            <div onClick={e => e.stopPropagation()} style={{ background: "#111", border: "1px solid #1e1e1e", borderRadius: 12, padding: 24, width: 420 }}>
+            <div className="key-modal" onClick={e => e.stopPropagation()} style={{ background: "#111", border: "1px solid #1e1e1e", borderRadius: 12, padding: 24, width: 420 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 6 }}>{freeLeft <= 0 && !apiKey ? "Free runs used up" : "API Key Settings"}</div>
               <p style={{ fontSize: 11, color: "#999", lineHeight: 1.6, marginBottom: 14 }}>{freeLeft <= 0 && !apiKey ? "Add your API key to continue. Stored locally only." : "Your key stays in your browser."}</p>
               <div style={{ fontSize: 9, color: "#888", fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>PROVIDER</div>
@@ -491,7 +507,7 @@ Respond ONLY in JSON:
         )}
 
         <div style={{ maxWidth: 680, margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+          <div className="tool-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: "#f59e0b", fontSize: 18, fontWeight: 700 }}>♫</span>
               <span style={{ fontSize: 18, fontWeight: 700, color: "#f5f5f0", fontFamily: "'Instrument Serif', serif" }}>PromptTune</span>
@@ -528,11 +544,11 @@ Respond ONLY in JSON:
           {/* ── Cost Budget Constraints ── */}
           {goal === "cost" && (
             <div style={{ marginTop: 12, padding: "14px 16px", background: "#0a0a0a", border: "1px solid #10b98120", borderRadius: 10 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: "#777", letterSpacing: 1, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+              <div className="budget-label-row" style={{ fontSize: 9, fontWeight: 700, color: "#777", letterSpacing: 1, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ color: "#10b981" }}>$</span> BUDGET CONSTRAINTS
                 <span style={{ fontWeight: 400, color: "#555", letterSpacing: 0 }}>— optional, for targeted cost optimization</span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div className="budget-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 9, color: "#888", fontWeight: 700, letterSpacing: 1, display: "block", marginBottom: 5 }}>TOTAL BUDGET (USD)</label>
                   <div style={{ position: "relative" }}>
@@ -568,11 +584,11 @@ Respond ONLY in JSON:
                 marginTop: 12, padding: "14px 16px", background: "#0a0a0a", border: "1px solid #1a1a1a",
                 borderRadius: 10, transition: "all 0.3s ease",
               }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: "#777", letterSpacing: 1, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                <div className="guardrail-label-row" style={{ fontSize: 9, fontWeight: 700, color: "#777", letterSpacing: 1, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ color: "#f59e0b" }}>⚙</span> GUARDRAILS
                   <span style={{ fontWeight: 400, color: "#555", letterSpacing: 0 }}>— optional constraints on other metrics</span>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="guardrails-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   {others.map(metric => (
                     <div key={metric}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#999", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
@@ -632,7 +648,7 @@ Respond ONLY in JSON:
                 const gLatency = checkGuardrail("latency", lP);
 
                 return (
-                  <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  <div className="metrics-row" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                     {[
                       { l: "Accuracy", o: `${aO}/10`, n: `${aN}/10`, d: `${aD > 0 ? "+" : ""}${aD}`, g: aD > 0, b: aD < 0, dt: aD > 0 ? "Better match" : "Same", guardrail: gAccuracy, isPrimary: goal === "accuracy" },
                       { l: "Cost", o: `$${m.orig.cost.toFixed(4)}`, n: `$${m.opt.cost.toFixed(4)}`, d: `${cP > 0 ? "+" : ""}${cP}%`, g: cD < 0, b: cD > 0, dt: `${m.orig.totalTokens}→${m.opt.totalTokens} tok`, guardrail: gCost, isPrimary: goal === "cost" },
@@ -698,7 +714,7 @@ Respond ONLY in JSON:
               })()}
 
               {result.metrics && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                <div className="output-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
                   {[{ l: "Current Output", t: result.metrics.orig.response, c: "#444" }, { l: "Optimized Output", t: result.metrics.opt.response, c: "#10b981" }].map((s, i) => (
                     <div key={i} style={{ background: "#0a0a0a", border: "1px solid #151515", borderRadius: 10, padding: 12 }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: s.c, letterSpacing: 1, marginBottom: 6, textTransform: "uppercase" }}>{s.l}</div>
