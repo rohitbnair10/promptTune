@@ -176,6 +176,8 @@ export default function App() {
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [runsUsed, setRunsUsedState] = useState(() => getRunsUsed());
   const [step, setStep] = useState("");
+  const [budget, setBudget] = useState("");
+  const [promptHits, setPromptHits] = useState("");
 
   const freeLeft = FREE_LIMIT - runsUsed;
   const canRun = apiKey || freeLeft > 0;
@@ -191,7 +193,14 @@ export default function App() {
     setLoading(true); setError(""); setResult(null);
     const goalMap = {
       accuracy: "Maximize how well the output meets the criteria. Add explicit constraints, guardrails, output format rules.",
-      cost: "Minimize total tokens. Make the system prompt shorter. Instruct the AI to respond concisely.",
+      cost: (() => {
+        let base = "Minimize total tokens and API cost. Make the system prompt shorter. Instruct the AI to respond concisely with no unnecessary words.";
+        if (budget && promptHits && parseFloat(budget) > 0 && parseFloat(promptHits) > 0) {
+          const maxPerCall = (parseFloat(budget) / parseFloat(promptHits)).toFixed(6);
+          base += ` BUDGET CONSTRAINT: The total budget is $${budget} for ${Number(promptHits).toLocaleString()} prompt calls (= $${maxPerCall} per call max). Design the prompt so that model responses stay within this per-call cost budget — shorter outputs, fewer tokens, no verbose explanations.`;
+        }
+        return base;
+      })(),
       latency: "Minimize response time. Add strict length limits. Prioritize speed.",
     };
     const guardrailMap = {
@@ -516,6 +525,35 @@ Respond ONLY in JSON:
             ))}
           </div>
 
+          {/* ── Cost Budget Constraints ── */}
+          {goal === "cost" && (
+            <div style={{ marginTop: 12, padding: "14px 16px", background: "#0a0a0a", border: "1px solid #10b98120", borderRadius: 10 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#777", letterSpacing: 1, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ color: "#10b981" }}>$</span> BUDGET CONSTRAINTS
+                <span style={{ fontWeight: 400, color: "#555", letterSpacing: 0 }}>— optional, for targeted cost optimization</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 9, color: "#888", fontWeight: 700, letterSpacing: 1, display: "block", marginBottom: 5 }}>TOTAL BUDGET (USD)</label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: 13, pointerEvents: "none" }}>$</span>
+                    <input type="number" min="0" step="0.01" value={budget} onChange={e => setBudget(e.target.value)} placeholder="e.g. 50" style={{ ...I, paddingLeft: 22, resize: "none", height: 40 }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 9, color: "#888", fontWeight: 700, letterSpacing: 1, display: "block", marginBottom: 5 }}>EXPECTED PROMPT HITS</label>
+                  <input type="number" min="0" value={promptHits} onChange={e => setPromptHits(e.target.value)} placeholder="e.g. 10000" style={{ ...I, resize: "none", height: 40 }} />
+                  <div style={{ fontSize: 9, color: "#555", marginTop: 4 }}>= no. of users × hits per user</div>
+                </div>
+              </div>
+              {budget && promptHits && parseFloat(budget) > 0 && parseFloat(promptHits) > 0 && (
+                <div style={{ marginTop: 10, padding: "8px 10px", background: "#060606", borderRadius: 8, fontSize: 10, color: "#10b981" }}>
+                  → Max <strong style={{ color: "#10b981" }}>${(parseFloat(budget) / parseFloat(promptHits)).toFixed(6)}</strong> per call to stay within budget
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Guardrails ── */}
           {(() => {
             const others = ["accuracy", "cost", "latency"].filter(x => x !== goal);
@@ -616,6 +654,45 @@ Respond ONLY in JSON:
                         )}
                       </div>
                     ))}
+                  </div>
+                );
+              })()}
+
+              {result.metrics && goal === "cost" && budget && promptHits && parseFloat(budget) > 0 && parseFloat(promptHits) > 0 && (() => {
+                const hitsNum = parseFloat(promptHits);
+                const budgetNum = parseFloat(budget);
+                const origProjected = result.metrics.orig.cost * hitsNum;
+                const optProjected = result.metrics.opt.cost * hitsNum;
+                const withinBudget = optProjected <= budgetNum;
+                const savings = origProjected - optProjected;
+                return (
+                  <div style={{ marginBottom: 16, padding: "12px 14px", background: "#0a0a0a", border: `1px solid ${withinBudget ? "#10b98130" : "#ef444430"}`, borderRadius: 10 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: "#10b981", letterSpacing: 1, marginBottom: 8 }}>$ PROJECTED COST AT SCALE</div>
+                    <div style={{ display: "flex", gap: 16, alignItems: "center", fontSize: 11, flexWrap: "wrap" }}>
+                      <div>
+                        <div style={{ color: "#888", fontSize: 9, marginBottom: 3 }}>ORIGINAL ({Number(promptHits).toLocaleString()} calls)</div>
+                        <div style={{ color: "#ef4444", fontWeight: 700 }}>${origProjected.toFixed(2)}</div>
+                      </div>
+                      <div style={{ color: "#555" }}>→</div>
+                      <div>
+                        <div style={{ color: "#888", fontSize: 9, marginBottom: 3 }}>OPTIMIZED</div>
+                        <div style={{ color: "#10b981", fontWeight: 700 }}>${optProjected.toFixed(2)}</div>
+                      </div>
+                      {savings > 0 && (
+                        <div>
+                          <div style={{ color: "#888", fontSize: 9, marginBottom: 3 }}>SAVINGS</div>
+                          <div style={{ color: "#10b981", fontWeight: 700 }}>-${savings.toFixed(2)}</div>
+                        </div>
+                      )}
+                      <div style={{ marginLeft: "auto", textAlign: "right" }}>
+                        <div style={{ color: "#888", fontSize: 9, marginBottom: 3 }}>YOUR BUDGET</div>
+                        <div style={{ color: withinBudget ? "#10b981" : "#ef4444", fontWeight: 700 }}>${budgetNum.toFixed(2)} {withinBudget ? "✓" : "✗"}</div>
+                      </div>
+                    </div>
+                    {withinBudget
+                      ? <div style={{ marginTop: 8, fontSize: 9, color: "#10b981" }}>✓ Optimized prompt fits within your budget.</div>
+                      : <div style={{ marginTop: 8, fontSize: 9, color: "#f59e0b" }}>⚠ Still over budget by ${(optProjected - budgetNum).toFixed(2)}. Consider stricter guardrails or further reducing output length.</div>
+                    }
                   </div>
                 );
               })()}
