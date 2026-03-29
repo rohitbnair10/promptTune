@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 const FREE_LIMIT = 3;
 const getRunsUsed = () => { try { return parseInt(localStorage.getItem("ek_runs") || "0"); } catch(e) { return 0; } };
@@ -760,6 +761,7 @@ Respond ONLY in JSON:
       <footer style={{ padding: "30px 24px", borderTop: "1px solid #0e0e0e", textAlign: "center" }}>
         <span style={{ fontSize: 10, color: "#666" }}>Built by Rohit · PromptTune v1 · Powered by Claude & OpenAI</span>
       </footer>
+      <Analytics />
     </div>
   );
 }
